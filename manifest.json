@@ -1,0 +1,21 @@
+{
+  "name": "TikTok Coin",
+  "short_name": "zeozy Coins",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0070ba",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "tiktok-logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "tiktok-logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
