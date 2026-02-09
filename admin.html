@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIMPONG Admin | V 26</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;800&family=Geologica:wght@300;600;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --tk-red: #ff0050; --tk-cyan: #00f2ea; --bg-glass: rgba(10, 10, 10, 0.85); --border-glass: rgba(255, 255, 255, 0.1); }
+        body { background: #000; background-image: radial-gradient(circle at top right, #1a0000, #000, #001a1a); color: #fff; font-family: 'SF Pro Display', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; overflow-x: hidden;}
+        .container { width: 100%; max-width: 480px; animation: fadeIn 0.8s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-card { background: var(--bg-glass); backdrop-filter: blur(40px); border: 1px solid var(--border-glass); border-radius: 35px; padding: 30px; box-shadow: 0 40px 100px rgba(0,0,0,0.8); }
+        .primary-btn { width: 100%; padding: 20px; background: #fff; border: none; font-weight: 900; border-radius: 50px; cursor: pointer; color: #000; text-transform: uppercase; transition: 0.1s; margin-top: 15px; }
+        .primary-btn:active { transform: scale(0.9); background: var(--tk-cyan); }
+        input, select { width: 100%; padding: 18px; margin-bottom: 20px; background: rgba(255,255,255,0.05); border: 1.5px solid var(--border-glass); color: white; border-radius: 20px; box-sizing: border-box; outline: none; }
+        .user-card { background: rgba(255,255,255,0.03); margin-top: 15px; border-radius: 28px; border: 1px solid var(--border-glass); overflow: hidden; transition: 0.3s; }
+        .user-card.active .card-details { max-height: 250px; padding: 20px; opacity: 1; border-top: 1px solid var(--border-glass); }
+        .card-main { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .card-details { max-height: 0; padding: 0 20px; background: rgba(0,0,0,0.4); transition: 0.4s; opacity: 0; font-size: 13px; pointer-events: none; }
+        .user-card.active .card-details { pointer-events: auto; }
+        .btn-wipe { background: rgba(255, 71, 71, 0.2); color: var(--tk-red); border: 1px solid var(--tk-red); padding: 8px 15px; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+        .stats-pill { text-align: center; font-size: 12px; font-weight: 900; color: var(--tk-cyan); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align: center;">
+            <div id="total-users" class="stats-pill">Total Accounts: 0</div>
+            <h1 style="font-family: 'Geologica'; font-weight: 900; font-size: 40px; margin:0; letter-spacing:-2px;">Lion Admin</h1>
+        </div>
+        
+        <div class="glass-card">
+            <input type="text" id="u" placeholder="User Name">
+            <input type="text" id="p" placeholder="Password">
+            <div style="display: flex; gap: 10px;">
+                <select id="duration">
+                    <option value="10">10 Minutes</option>
+                    <option value="1440">1 Day</option>
+                    <option value="10080">1 Week</option>
+                    <option value="9999999">Lifetime</option>
+                </select>
+                <input type="number" id="limit" value="1">
+            </div>
+            <button class="primary-btn" onclick="addUser()">Create User</button>
+        </div>
+        <input type="text" id="search" style="margin-top:30px; border-radius:50px; padding-left:25px;" placeholder="Search Database..." onkeyup="filterUsers()">
+        <div id="list"></div>
+    </div>
+
+    <script>
+        const BIN_ID = "698a21e6d0ea881f40ada608";
+        const KEY = "$2a$10$3/qrKeB3PeTy/IhVmueRBuEih3F/yMzoTzN32ANer6GZGl9DlKqCG";
+        const URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        let localUsers = [];
+
+        async function getDB() {
+            const res = await fetch(URL + "/latest", { headers: {"X-Master-Key": KEY} });
+            const data = await res.json();
+            return data.record || [];
+        }
+
+        async function updateDB(newData) {
+            await fetch(URL, { method: 'PUT', headers: {'Content-Type': 'application/json', 'X-Master-Key': KEY}, body: JSON.stringify(newData) });
+        }
+
+        async function addUser() {
+            const u = document.getElementById('u').value.trim();
+            const p = document.getElementById('p').value.trim();
+            const dur = document.getElementById('duration').value;
+            const lim = document.getElementById('limit').value;
+            if(!u || !p) return alert("Fill all fields");
+            let users = await getDB();
+            users.push({ username: u, password: p, duration: parseInt(dur), expiry: 0, deviceLimit: parseInt(lim), usedDevices: 0 });
+            await updateDB(users);
+            location.reload();
+        }
+
+        async function removeUser(user) {
+            if(!confirm("Wipe User?")) return;
+            let users = await getDB();
+            await updateDB(users.filter(u => u.username !== user));
+            location.reload();
+        }
+
+        function renderList(users) {
+            const list = document.getElementById('list');
+            list.innerHTML = "";
+            document.getElementById('total-users').innerText = `Total Accounts: ${users.length}`;
+            users.reverse().forEach(user => {
+                const status = user.expiry === 0 ? "WAITING LOGIN" : (Date.now() > user.expiry ? "EXPIRED" : "ACTIVE");
+                list.innerHTML += `
+                <div class="user-card" onclick="this.classList.toggle('active')">
+                    <div class="card-main">
+                        <div><b>${user.username}</b><br><small style="color:${status==='ACTIVE'?'var(--tk-cyan)':'var(--tk-red)'}">${status}</small></div>
+                        <div style="text-align:right"><b>${user.usedDevices}/${user.deviceLimit}</b><br><small>DEV</small></div>
+                    </div>
+                    <div class="card-details">
+                        Password: ${user.password}<br>
+                        Duration: ${user.duration} mins<br>
+                        Expiry: ${user.expiry === 0 ? "Not Started" : new Date(user.expiry).toLocaleString()}<br>
+                        <button class="btn-wipe" onclick="event.stopPropagation(); removeUser('${user.username}')">Wipe Data</button>
+                    </div>
+                </div>`;
+            });
+        }
+
+        async function load() { localUsers = await getDB(); renderList(localUsers); }
+        load();
+        function filterUsers() {
+            const t = document.getElementById('search').value.toLowerCase();
+            renderList(localUsers.filter(u => u.username.toLowerCase().includes(t)));
+        }
+    </script>
+</body>
+</html>
