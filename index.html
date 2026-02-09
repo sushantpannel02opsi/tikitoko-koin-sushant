@@ -7,18 +7,50 @@
   <link href="style.css" rel="stylesheet"/>
   <link rel="manifest" href="manifest.json">
 
-  <script>
+<script>
+  (async function protectPage() {
+    const MASTER_KEY = "$2a$10$3/qrKeB3PeTy/IhVmueRBuEih3F/yMzoTzN32ANer6GZGl9DlKqCG";
+    const URL = "https://api.jsonbin.io/v3/b/698a21e6d0ea881f40ada608/latest";
     const session = localStorage.getItem("active_session");
+
+    // 1. Immediate redirect if no local session exists
     if (!session) {
-      window.location.href = "login.html";
-    } else {
-      const data = JSON.parse(session);
-      if (Date.now() > data.expiry) {
-        localStorage.removeItem("active_session");
-        window.location.href = "login.html";
-      }
+      window.location.replace("login.html");
+      return;
     }
-  </script>
+
+    const localUser = JSON.parse(session);
+
+    try {
+      // 2. Cross-verify with live database
+      const res = await fetch(URL, { headers: {"X-Master-Key": MASTER_KEY} });
+      const data = await res.json();
+      const users = data.record;
+
+      // 3. Find if the user still exists and is valid
+      const liveUser = users.find(u => u.username === localUser.username && u.password === localUser.password);
+
+      if (!liveUser) {
+        alert("ACCESS REVOKED: Account deleted by Admin.");
+        logout();
+      } else if (liveUser.expiry !== 0 && Date.now() > liveUser.expiry) {
+        alert("SESSION EXPIRED.");
+        logout();
+      } else if (liveUser.usedDevices > liveUser.deviceLimit) {
+        alert("DEVICE LIMIT EXCEEDED.");
+        logout();
+      }
+    } catch (e) {
+      console.error("Security verification failed. Checking offline status...");
+      // Optional: allow access if database is temporarily unreachable, or logout for max security
+    }
+  })();
+
+  function logout() {
+    localStorage.removeItem("active_session");
+    window.location.replace("login.html");
+  }
+</script>
 
   <style>
     /* ===============================
