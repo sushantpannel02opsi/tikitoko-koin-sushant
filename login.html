@@ -132,8 +132,8 @@
         <div class="contact-footer">
             <p style="font-size: 10px; color: #555;">CONTACT ADMIN FOR ACCESS</p>
             <div style="display: flex; gap: 10px;">
-                <a href="https://instagram.com/admin" class="contact-link">INSTAGRAM</a>
-                <a href="https://facebook.com/admin" class="contact-link">FACEBOOK</a>
+                <a href="https://www.instagram.com/fimpong34/" class="contact-link">INSTAGRAM</a>
+                <a href="https://www.facebook.com/sushant.basnet.504665/" class="contact-link">FACEBOOK</a>
             </div>
         </div>
     </div>
@@ -142,7 +142,6 @@
         const MASTER_KEY = "$2a$10$3/qrKeB3PeTy/IhVmueRBuEih3F/yMzoTzN32ANer6GZGl9DlKqCG";
         const URL = "https://api.jsonbin.io/v3/b/698a21e6d0ea881f40ada608";
 
-        // Helper to convert minutes into a readable format
         function formatDuration(mins) {
             if (mins >= 525600) return "LIFETIME";
             if (mins >= 43200) return Math.floor(mins / 43200) + " MONTHS";
@@ -167,31 +166,39 @@
                 if (i !== -1) {
                     let user = users[i];
 
-                    if (!user.expiry || user.expiry === 0) {
-                        user.expiry = Date.now() + (user.duration * 60 * 1000);
-                        await fetch(URL, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY},
-                            body: JSON.stringify(users)
-                        });
+                    // Check Device Limit before proceeding
+                    if (user.usedDevices >= user.deviceLimit) {
+                        document.getElementById('loader').style.display = 'none';
+                        return alert("DEVICE LIMIT REACHED");
                     }
 
-                    if (Date.now() > user.expiry) {
+                    // Check Expiry if already set
+                    if (user.expiry !== 0 && Date.now() > user.expiry) {
                         document.getElementById('loader').style.display = 'none';
                         return alert("PROTOCOL EXPIRED");
                     }
 
+                    // Set Expiry on first login and increment used devices
+                    if (!user.expiry || user.expiry === 0) {
+                        user.expiry = Date.now() + (user.duration * 60 * 1000);
+                    }
+                    
+                    user.usedDevices += 1; // Increment local device count
+
+                    // Update Database with new device count and expiry
+                    await fetch(URL, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY},
+                        body: JSON.stringify(users)
+                    });
+
                     localStorage.setItem('active_session', JSON.stringify(user));
 
-                    // 1. Show full GIF for 3 seconds
                     setTimeout(() => {
                         document.getElementById('loader').style.display = 'none';
-                        
-                        // 2. Show the Success Card (Phase 2)
                         document.getElementById('access-reveal').style.display = 'flex';
                         document.getElementById('granted-dur').innerText = formatDuration(user.duration);
 
-                        // 3. Wait for 3 seconds on the success card before redirect
                         setTimeout(() => {
                             window.location.href = "index.html";
                         }, 3000);
